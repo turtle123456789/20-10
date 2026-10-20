@@ -83,6 +83,14 @@ canvas{
 </div>
 
 <script>
+async function lockLandscape() {
+  try {
+    await document.documentElement.requestFullscreen();
+    await screen.orientation.lock("landscape");
+  } catch (error) {
+    console.log("Trình duyệt không hỗ trợ khóa hướng ngang.");
+  }
+}
 const canvas=document.getElementById("canvas");
 const ctx=canvas.getContext("2d",{alpha:false});
 
