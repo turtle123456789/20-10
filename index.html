@@ -73,6 +73,20 @@ body {
     transform: translateY(0);
   }
 }
+.message {
+  bottom: 2%;
+  padding: 4px;
+}
+
+.message h1 {
+  font-size: clamp(14px, 3vw, 32px);
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.message p {
+  font-size: clamp(10px, 1.8vw, 15px);
+}
 </style>>
 </head>
 
@@ -110,8 +124,8 @@ let lastTime=0;
 let frame=0;
 
 // Giới hạn số hạt để chạy mượt hơn
-const MAX_PARTICLES=90000;
-const MAX_PETALS=500;
+const MAX_PARTICLES=10000;
+const MAX_PETALS=50;
 
 const rand=(a,b)=>Math.random()*(b-a)+a;
 
@@ -199,11 +213,14 @@ function build(){
   ).data;
 
   // Ảnh gốc chiếm toàn màn hình, không làm biến dạng
-  const cover=Math.max(W/img.width,H/img.height);
-  const imageW=img.width*cover;
-  const imageH=img.height*cover;
-  const ox=(W-imageW)/2;
-  const oy=(H-imageH)/2;
+  // Thu nhỏ ảnh để nhìn thấy toàn bộ nội dung
+  const fit = Math.min(W / img.width, H / img.height) * 0.90;
+
+  const imageW = img.width * fit;
+  const imageH = img.height * fit;
+
+  const ox = (W - imageW) / 2;
+  const oy = (H - imageH) / 2;
 
   const step=Math.max(
     2,
@@ -321,18 +338,21 @@ function animate(now){
   const elapsed=(now-startTime)/1000;
 
   // Giữ nguyên ảnh mẫu phía dưới để hình vẫn đẹp và sắc nét
-  const cover=Math.max(W/img.width,H/img.height);
-  const iw=img.width*cover;
-  const ih=img.height*cover;
+  // Giữ toàn bộ ảnh trong khung, không cắt nội dung
+  const fit = Math.min(W / img.width, H / img.height) * 0.90;
 
-  // Zoom nhẹ nhàng
-  const zoom=1+Math.min(elapsed*.00025,.025);
-  const dw=iw*zoom;
-  const dh=ih*zoom;
+  const iw = img.width * fit;
+  const ih = img.height * fit;
 
-  ctx.globalAlpha=Math.min(1,elapsed);
-  ctx.drawImage(img,(W-dw)/2,(H-dh)/2,dw,dh);
-  ctx.globalAlpha=1;
+  ctx.globalAlpha = Math.min(1, elapsed);
+  ctx.drawImage(
+    img,
+    (W - iw) / 2,
+    (H - ih) / 2,
+    iw,
+    ih
+  );
+  ctx.globalAlpha = 1;
 
   // Hạt chuyển động nhẹ quanh vị trí đích
   for(const p of particles){
