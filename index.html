@@ -3,16 +3,18 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050107">
 <title>20/10 - Ngàn Chấm Đỏ Yêu Thương</title>
+
 <style>
-  * {
+* {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-html,
-body {
-  margin: 0;
+html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
@@ -20,16 +22,25 @@ body {
   font-family: Arial, sans-serif;
 }
 
-#stage {
+body {
   position: fixed;
   inset: 0;
-  width: 100%;
-  height: 100%;
+}
+
+#stage {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
   background: #050107;
+  transform-origin: top left;
 }
 
 #canvas {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
@@ -40,54 +51,64 @@ body {
   z-index: 2;
   left: 0;
   right: 0;
-  bottom: 4%;
+  bottom: 2%;
   width: 100%;
-  padding: 8px;
+  padding: 6px 12px;
   text-align: center;
   pointer-events: none;
-  animation: appear 2s ease 1s both;
+  animation: appear 1.5s ease 0.5s both;
 }
 
 .message h1 {
-  margin: 0 0 8px;
-  font-size: clamp(18px, 4vw, 48px);
+  margin: 0 0 5px;
   color: #ff526f;
-  letter-spacing: 3px;
-  text-shadow: 0 0 12px #ff1744, 0 0 35px #ff1744;
+  font-size: clamp(16px, 3.5vw, 36px);
+  line-height: 1.2;
+  letter-spacing: 2px;
+  text-shadow: 0 0 12px #ff1744, 0 0 30px #ff1744;
 }
 
 .message p {
-  margin: 0;
-  font-size: clamp(12px, 2.5vw, 19px);
   color: #ffe0e7;
+  font-size: clamp(10px, 1.8vw, 17px);
+  line-height: 1.4;
   text-shadow: 0 0 10px #ff1744;
 }
 
 @keyframes appear {
   from {
     opacity: 0;
-    transform: translateY(15px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
-.message {
-  bottom: 2%;
-  padding: 4px;
+
+@media (max-height: 420px) {
+  .message {
+    bottom: 1%;
+    padding: 3px 8px;
+  }
+
+  .message h1 {
+    font-size: clamp(14px, 3.5vh, 25px);
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+  }
+
+  .message p {
+    font-size: clamp(9px, 2.4vh, 13px);
+  }
 }
 
-.message h1 {
-  font-size: clamp(14px, 3vw, 32px);
-  letter-spacing: 1px;
-  margin-bottom: 4px;
+@media (prefers-reduced-motion: reduce) {
+  .message {
+    animation: none;
+  }
 }
-
-.message p {
-  font-size: clamp(10px, 1.8vw, 15px);
-}
-</style>>
+</style>
 </head>
 
 <body>
@@ -101,59 +122,62 @@ body {
 </div>
 
 <script>
-async function lockLandscape() {
-  try {
-    await document.documentElement.requestFullscreen();
-    await screen.orientation.lock("landscape");
-  } catch (error) {
-    console.log("Trình duyệt không hỗ trợ khóa hướng ngang.");
-  }
-}
-const canvas=document.getElementById("canvas");
-const ctx=canvas.getContext("2d",{alpha:false});
+"use strict";
 
-const img=new Image();
-img.src="poster.png";
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d", { alpha: false });
+const stage = document.getElementById("stage");
 
-let W,H,D;
-let particles=[];
-let petals=[];
-let started=false;
-let startTime=0;
-let lastTime=0;
-let frame=0;
+const img = new Image();
+img.decoding = "async";
+img.src = "poster.png";
 
-// Giới hạn số hạt để chạy mượt hơn
-const MAX_PARTICLES=10000;
-const MAX_PETALS=50;
+const isMobile =
+  /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
-const rand=(a,b)=>Math.random()*(b-a)+a;
+const MAX_PARTICLES = isMobile ? 3500 : 10000;
+const MAX_PETALS = isMobile ? 20 : 50;
 
-// Tạo sẵn ảnh chấm sáng, không dùng shadowBlur từng hạt
-function createGlow(color){
-  const c=document.createElement("canvas");
-  c.width=c.height=64;
-  const g=c.getContext("2d");
+let W = 0;
+let H = 0;
+let D = 1;
+let particles = [];
+let petals = [];
+let started = false;
+let startTime = 0;
+let lastTime = 0;
+let frame = 0;
+let resizeTimer = 0;
 
-  const grad=g.createRadialGradient(32,32,0,32,32,32);
-  grad.addColorStop(0,"rgba(255,255,255,1)");
-  grad.addColorStop(.12,color);
-  grad.addColorStop(.35,color);
-  grad.addColorStop(1,"rgba(255,0,40,0)");
+const rand = (a, b) => Math.random() * (b - a) + a;
 
-  g.fillStyle=grad;
-  g.fillRect(0,0,64,64);
+function createGlow(color) {
+  const c = document.createElement("canvas");
+  c.width = c.height = 48;
+
+  const g = c.getContext("2d");
+  const grad = g.createRadialGradient(24, 24, 0, 24, 24, 24);
+
+  grad.addColorStop(0, "rgba(255,255,255,1)");
+  grad.addColorStop(0.15, color);
+  grad.addColorStop(0.4, color);
+  grad.addColorStop(1, "rgba(255,0,40,0)");
+
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 48, 48);
+
   return c;
 }
 
-const glowRed=createGlow("#ff1744");
-const glowPink=createGlow("#ff6484");
-const glowWhite=createGlow("#fff0f4");
+const glowRed = createGlow("#ff1744");
+const glowPink = createGlow("#ff6484");
+const glowWhite = createGlow("#fff0f4");
 
-
+/*
+ * Xoay giao diện ngang bằng CSS khi điện thoại cầm dọc.
+ * Không phụ thuộc vào trạng thái khóa xoay của điện thoại.
+ */
 function resize() {
-  D = Math.min(window.devicePixelRatio || 1, 1.5);
-
   const screenW = window.innerWidth;
   const screenH = window.innerHeight;
   const portrait = screenH > screenW;
@@ -161,24 +185,18 @@ function resize() {
   W = portrait ? screenH : screenW;
   H = portrait ? screenW : screenH;
 
-  const stage = document.getElementById("stage");
+  D = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2);
 
   stage.style.width = W + "px";
   stage.style.height = H + "px";
 
   if (portrait) {
-    // Xoay giao diện ngang khi điện thoại cầm dọc
     stage.style.left = screenW + "px";
     stage.style.top = "0";
-    stage.style.right = "auto";
-    stage.style.bottom = "auto";
     stage.style.transform = "rotate(90deg)";
-    stage.style.transformOrigin = "top left";
   } else {
     stage.style.left = "0";
     stage.style.top = "0";
-    stage.style.right = "auto";
-    stage.style.bottom = "auto";
     stage.style.transform = "none";
   }
 
@@ -194,211 +212,243 @@ function resize() {
   }
 }
 
-window.addEventListener("resize", resize);
-window.addEventListener("orientationchange", resize);
+function scheduleResize() {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(resize, 100);
+}
 
+window.addEventListener("resize", scheduleResize);
+window.addEventListener("orientationchange", scheduleResize);
 
-function build(){
-  const off=document.createElement("canvas");
-  const oc=off.getContext("2d",{willReadFrequently:true});
-
-  // Thu nhỏ ảnh dùng để lấy tọa độ hạt
-  const sampleScale=Math.min(600/img.width,600/img.height);
-  off.width=Math.round(img.width*sampleScale);
-  off.height=Math.round(img.height*sampleScale);
-
-  oc.drawImage(img,0,0,off.width,off.height);
-  const pixels=oc.getImageData(
-    0,0,off.width,off.height
-  ).data;
-
-  // Ảnh gốc chiếm toàn màn hình, không làm biến dạng
-  // Thu nhỏ ảnh để nhìn thấy toàn bộ nội dung
-  const fit = Math.min(W / img.width, H / img.height) * 0.90;
+/*
+ * Dùng cùng một tỷ lệ cho ảnh và các hạt.
+ * Math.min đảm bảo toàn bộ poster nằm trong khung.
+ */
+function getImageLayout() {
+  const fit = Math.min(W / img.width, H / img.height);
 
   const imageW = img.width * fit;
   const imageH = img.height * fit;
 
-  const ox = (W - imageW) / 2;
-  const oy = (H - imageH) / 2;
+  return {
+    x: (W - imageW) / 2,
+    y: (H - imageH) / 2,
+    width: imageW,
+    height: imageH
+  };
+}
 
-  const step=Math.max(
-    2,
-    Math.ceil(Math.sqrt(off.width*off.height/MAX_PARTICLES))
+function build() {
+  if (!img.naturalWidth || !W || !H) return;
+
+  const off = document.createElement("canvas");
+  const oc = off.getContext("2d", { willReadFrequently: true });
+
+  // Giới hạn ảnh lấy mẫu để giảm tải CPU và bộ nhớ.
+  const sampleScale = Math.min(
+    500 / img.width,
+    500 / img.height,
+    1
   );
 
-  const points=[];
+  off.width = Math.max(1, Math.round(img.width * sampleScale));
+  off.height = Math.max(1, Math.round(img.height * sampleScale));
 
-  for(let y=0;y<off.height;y+=step){
-    for(let x=0;x<off.width;x+=step){
-      const i=(y*off.width+x)*4;
-      const r=pixels[i];
-      const g=pixels[i+1];
-      const b=pixels[i+2];
+  oc.drawImage(img, 0, 0, off.width, off.height);
 
-      // Chọn những vùng đỏ, hồng và sáng
-      if(r>100&&r>g*1.2&&r>b*1.05){
+  const pixels = oc.getImageData(
+    0, 0, off.width, off.height
+  ).data;
+
+  const layout = getImageLayout();
+
+  const step = Math.max(
+    1,
+    Math.ceil(
+      Math.sqrt((off.width * off.height) / MAX_PARTICLES)
+    )
+  );
+
+  const points = [];
+
+  for (let y = 0; y < off.height; y += step) {
+    for (let x = 0; x < off.width; x += step) {
+      const i = (y * off.width + x) * 4;
+
+      const r = pixels[i];
+      const g = pixels[i + 1];
+      const b = pixels[i + 2];
+      const a = pixels[i + 3];
+
+      // Chọn vùng đỏ, hồng, giữ hiệu ứng chấm sáng.
+      if (a > 100 && r > 100 && r > g * 1.2 && r > b * 1.05) {
         points.push({
-          x:ox+(x/off.width)*imageW,
-          y:oy+(y/off.height)*imageH
+          x: layout.x + (x / off.width) * layout.width,
+          y: layout.y + (y / off.height) * layout.height
         });
       }
     }
   }
 
-  // Trộn ngẫu nhiên để hạt tụ hình từ nhiều hướng
-  for(let i=points.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [points[i],points[j]]=[points[j],points[i]];
+  // Xáo trộn để hạt xuất hiện từ nhiều hướng.
+  for (let i = points.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [points[i], points[j]] = [points[j], points[i]];
   }
 
-  const selected=points.slice(0,MAX_PARTICLES);
+  const selected = points.slice(0, MAX_PARTICLES);
 
-  particles=selected.map((p,i)=>({
-    x:rand(0,W),
-    y:rand(0,H),
-    tx:p.x,
-    ty:p.y,
-    size:rand(2.5,4.5),
-    phase:rand(0,Math.PI*2),
-    speed:rand(.035,.075),
-    color:Math.random()<.15?glowPink:
-          Math.random()<.08?glowWhite:glowRed
+  particles = selected.map(p => {
+    const roll = Math.random();
+
+    return {
+      x: rand(0, W),
+      y: rand(0, H),
+      tx: p.x,
+      ty: p.y,
+      size: rand(2, 4),
+      phase: rand(0, Math.PI * 2),
+      speed: rand(0.035, 0.075),
+      color: roll < 0.15 ? glowPink :
+             roll < 0.22 ? glowWhite : glowRed
+    };
+  });
+
+  petals = Array.from({ length: MAX_PETALS }, () => ({
+    x: rand(0, W),
+    y: rand(0, H),
+    size: rand(4, 10),
+    vx: rand(-0.35, 0.35),
+    vy: rand(0.3, 0.9),
+    angle: rand(0, Math.PI * 2),
+    spin: rand(-0.015, 0.015),
+    phase: rand(0, 8)
   }));
 
-  petals=Array.from({length:MAX_PETALS},()=>({
-    x:rand(0,W),
-    y:rand(0,H),
-    size:rand(5,12),
-    vx:rand(-.35,.35),
-    vy:rand(.3,.9),
-    angle:rand(0,Math.PI*2),
-    spin:rand(-.015,.015),
-    phase:rand(0,8)
-  }));
-
-  startTime=performance.now();
-  started=true;
+  startTime = performance.now();
+  started = true;
 }
 
-// Vẽ chấm sáng bằng ảnh đã tạo sẵn
-function dot(x,y,size,sprite,alpha=1){
-  const s=size*3.2;
-  ctx.globalAlpha=alpha;
-  ctx.drawImage(sprite,x-s/2,y-s/2,s,s);
+function dot(x, y, size, sprite, alpha = 1) {
+  const s = size * 3;
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(sprite, x - s / 2, y - s / 2, s, s);
 }
 
-function drawPetal(p,dt){
-  p.x+=p.vx*dt+Math.sin(frame*.015+p.phase)*.3*dt;
-  p.y+=p.vy*dt;
-  p.angle+=p.spin*dt;
+function drawPetal(p, dt) {
+  p.x += p.vx * dt + Math.sin(frame * 0.015 + p.phase) * 0.3 * dt;
+  p.y += p.vy * dt;
+  p.angle += p.spin * dt;
 
-  if(p.y>H+20){
-    p.y=-20;
-    p.x=rand(0,W);
+  if (p.y > H + 20) {
+    p.y = -20;
+    p.x = rand(0, W);
   }
 
   ctx.save();
-  ctx.translate(p.x,p.y);
+  ctx.translate(p.x, p.y);
   ctx.rotate(p.angle);
-  ctx.globalAlpha=.75;
-  ctx.fillStyle="#ff315b";
+  ctx.globalAlpha = 0.7;
+  ctx.fillStyle = "#ff315b";
 
   ctx.beginPath();
-  ctx.moveTo(0,-p.size);
+  ctx.moveTo(0, -p.size);
   ctx.bezierCurveTo(
-    p.size,-p.size*.3,
-    p.size*.7,p.size*.8,
-    0,p.size
+    p.size, -p.size * 0.3,
+    p.size * 0.7, p.size * 0.8,
+    0, p.size
   );
   ctx.bezierCurveTo(
-    -p.size*.7,p.size*.4,
-    -p.size,-p.size*.4,
-    0,-p.size
+    -p.size * 0.7, p.size * 0.4,
+    -p.size, -p.size * 0.4,
+    0, -p.size
   );
   ctx.fill();
   ctx.restore();
 }
 
-function animate(now){
+function animate(now) {
   requestAnimationFrame(animate);
 
-  const dt=lastTime?
-    Math.min((now-lastTime)/16.67,2):1;
-  lastTime=now;
-  frame+=dt;
+  const dt = lastTime
+    ? Math.min((now - lastTime) / 16.67, 2)
+    : 1;
 
-  ctx.setTransform(D,0,0,D,0,0);
-  ctx.globalAlpha=1;
-  ctx.fillStyle="#050107";
-  ctx.fillRect(0,0,W,H);
+  lastTime = now;
+  frame += dt;
 
-  if(!started||!img.naturalWidth)return;
+  ctx.setTransform(D, 0, 0, D, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "#050107";
+  ctx.fillRect(0, 0, W, H);
 
-  const elapsed=(now-startTime)/1000;
+  if (!started || !img.naturalWidth) return;
 
-  // Giữ nguyên ảnh mẫu phía dưới để hình vẫn đẹp và sắc nét
-  // Giữ toàn bộ ảnh trong khung, không cắt nội dung
-  const fit = Math.min(W / img.width, H / img.height) * 0.90;
+  const elapsed = (now - startTime) / 1000;
+  const layout = getImageLayout();
 
-  const iw = img.width * fit;
-  const ih = img.height * fit;
-
+  // Vẽ ảnh nguyên bản, không zoom, không cắt và không méo.
   ctx.globalAlpha = Math.min(1, elapsed);
   ctx.drawImage(
     img,
-    (W - iw) / 2,
-    (H - ih) / 2,
-    iw,
-    ih
+    layout.x,
+    layout.y,
+    layout.width,
+    layout.height
   );
   ctx.globalAlpha = 1;
 
-  // Hạt chuyển động nhẹ quanh vị trí đích
-  for(const p of particles){
-    p.x+=(p.tx-p.x)*p.speed*dt;
-    p.y+=(p.ty-p.y)*p.speed*dt;
+  for (const p of particles) {
+    p.x += (p.tx - p.x) * p.speed * dt;
+    p.y += (p.ty - p.y) * p.speed * dt;
 
-    const wave=Math.sin(now*.0025+p.phase);
-    const x=p.x+wave*1.3;
-    const y=p.y+Math.cos(now*.002+p.phase)*1.3;
-    const alpha=.45+.45*(.5+.5*wave);
+    const wave = Math.sin(now * 0.0025 + p.phase);
+    const x = p.x + wave * 1.3;
+    const y = p.y + Math.cos(now * 0.002 + p.phase) * 1.3;
+    const alpha = 0.45 + 0.45 * (0.5 + 0.5 * wave);
 
-    dot(x,y,p.size,p.color,alpha);
+    dot(x, y, p.size, p.color, alpha);
   }
 
-  // Cánh hoa bay chậm
-  for(const p of petals){
-    drawPetal(p,dt);
+  for (const p of petals) {
+    drawPetal(p, dt);
   }
 
-  // Trái tim hạt sáng
-  for(let i=0;i<38;i++){
-    const t=i/38*Math.PI*2;
-    const hx=16*Math.pow(Math.sin(t),3);
-    const hy=-(13*Math.cos(t)-5*Math.cos(2*t)
-      -2*Math.cos(3*t)-Math.cos(4*t));
+  // Trái tim chấm sáng ở góc trái trên.
+  for (let i = 0; i < 38; i++) {
+    const t = i / 38 * Math.PI * 2;
 
-    const x=W*.14+hx*1.3;
-    const y=H*.25+hy*1.3;
-    const pulse=1+.15*Math.sin(now*.004+i);
+    const hx = 16 * Math.pow(Math.sin(t), 3);
+    const hy = -(
+      13 * Math.cos(t)
+      - 5 * Math.cos(2 * t)
+      - 2 * Math.cos(3 * t)
+      - Math.cos(4 * t)
+    );
 
-    dot(x,y,3*pulse,glowPink,.8);
+    const x = W * 0.14 + hx * 1.3;
+    const y = H * 0.25 + hy * 1.3;
+    const pulse = 1 + 0.15 * Math.sin(now * 0.004 + i);
+
+    dot(x, y, 3 * pulse, glowPink, 0.8);
   }
 
-  ctx.globalAlpha=1;
+  ctx.globalAlpha = 1;
 }
 
-img.onload=()=>{
+img.onload = () => {
   resize();
 };
 
-img.onerror=()=>{
-  document.body.innerHTML=
-    '<p style="color:white;padding:30px">Không tìm thấy poster.png. Hãy đặt ảnh cùng thư mục với index.html.</p>';
+img.onerror = () => {
+  document.body.innerHTML =
+    '<div style="color:white;padding:24px;font:16px Arial">' +
+    'Không tìm thấy poster.png. Hãy đặt ảnh cùng thư mục với index.html.' +
+    '</div>';
 };
 
-window.addEventListener("resize",resize);
+// Thiết lập khung ngay khi mở trang.
+resize();
 requestAnimationFrame(animate);
 </script>
 </body>
