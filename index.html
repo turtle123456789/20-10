@@ -39,6 +39,38 @@ canvas{
   from{opacity:0;transform:translateY(15px)}
   to{opacity:1;transform:translateY(0)}
 }
+
+/* Luôn hiển thị nội dung theo khung ngang trên điện thoại */
+@media screen and (max-width: 768px) and (orientation: portrait) {
+  canvas {
+    width: 100vh;
+    height: 100vw;
+    position: fixed;
+    top: 0;
+    left: 100vw;
+    transform-origin: top left;
+    transform: rotate(90deg);
+  }
+
+  .message {
+    width: 100vh;
+    left: 100vw;
+    bottom: auto;
+    top: 100vw;
+    transform: rotate(90deg);
+    transform-origin: top left;
+    padding: 8px;
+  }
+
+  .message h1 {
+    font-size: 28px;
+  }
+
+  .message p {
+    font-size: 14px;
+  }
+}
+
 </style>
 </head>
 
