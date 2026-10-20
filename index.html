@@ -41,33 +41,101 @@ canvas{
 }
 
 /* Luôn hiển thị nội dung theo khung ngang trên điện thoại */
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #050107;
+}
+
+body {
+  font-family: Arial, sans-serif;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #050107;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.message {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 5%;
+  text-align: center;
+  pointer-events: none;
+  padding: 15px;
+  animation: appear 2s ease 1s both;
+}
+
+.message h1 {
+  font-size: clamp(25px, 5vw, 48px);
+  color: #ff526f;
+  letter-spacing: 3px;
+  text-shadow: 0 0 12px #ff1744, 0 0 35px #ff1744;
+  margin-bottom: 12px;
+}
+
+.message p {
+  font-size: clamp(13px, 2.5vw, 19px);
+  color: #ffe0e7;
+  text-shadow: 0 0 10px #ff1744;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Điện thoại cầm dọc: xoay cả khung thành ngang */
 @media screen and (max-width: 768px) and (orientation: portrait) {
-  canvas {
-    width: 100vh;
+  #stage {
+    width: 100dvh;
     height: 100vw;
-    position: fixed;
+    inset: auto;
     top: 0;
     left: 100vw;
-    transform-origin: top left;
     transform: rotate(90deg);
+    transform-origin: top left;
   }
 
   .message {
-    width: 100vh;
-    left: 100vw;
-    bottom: auto;
-    top: 100vw;
-    transform: rotate(90deg);
-    transform-origin: top left;
-    padding: 8px;
+    bottom: 3%;
+    padding: 5px;
   }
 
   .message h1 {
-    font-size: 28px;
+    font-size: clamp(16px, 4vw, 28px);
+    letter-spacing: 2px;
+    margin-bottom: 6px;
   }
 
   .message p {
-    font-size: 14px;
+    font-size: clamp(10px, 2.2vw, 14px);
+    margin: 0;
   }
 }
 
@@ -75,11 +143,13 @@ canvas{
 </head>
 
 <body>
-<canvas id="canvas"></canvas>
+<div id="stage">
+  <canvas id="canvas"></canvas>
 
-<div class="message">
-  <h1>CHÚC MỪNG 20/10</h1>
-  <p>Chúc một nửa thế giới luôn xinh đẹp và hạnh phúc ❤️</p>
+  <div class="message">
+    <h1>CHÚC MỪNG 20/10</h1>
+    <p>Chúc một nửa thế giới luôn xinh đẹp và hạnh phúc ❤️</p>
+  </div>
 </div>
 
 <script>
@@ -107,7 +177,7 @@ let frame=0;
 
 // Giới hạn số hạt để chạy mượt hơn
 const MAX_PARTICLES=90000;
-const MAX_PETALS=1000;
+const MAX_PETALS=500;
 
 const rand=(a,b)=>Math.random()*(b-a)+a;
 
@@ -132,20 +202,49 @@ const glowRed=createGlow("#ff1744");
 const glowPink=createGlow("#ff6484");
 const glowWhite=createGlow("#fff0f4");
 
-function resize(){
-  D=Math.min(window.devicePixelRatio||1,1.5);
-  W=innerWidth;
-  H=innerHeight;
 
-  canvas.width=Math.round(W*D);
-  canvas.height=Math.round(H*D);
-  canvas.style.width=W+"px";
-  canvas.style.height=H+"px";
+function resize() {
+  D = Math.min(window.devicePixelRatio || 1, 1.5);
 
-  ctx.setTransform(D,0,0,D,0,0);
+  const portrait =
+    window.innerWidth <= 768 &&
+    window.innerHeight > window.innerWidth;
 
-  if(img.complete&&img.naturalWidth)build();
+  // Khi điện thoại dọc, dùng kích thước logic nằm ngang
+  W = portrait ? window.innerHeight : window.innerWidth;
+  H = portrait ? window.innerWidth : window.innerHeight;
+
+  const stage = document.getElementById("stage");
+  stage.style.width = W + "px";
+  stage.style.height = H + "px";
+
+  if (portrait) {
+    stage.style.left = "100vw";
+    stage.style.top = "0";
+    stage.style.right = "auto";
+    stage.style.bottom = "auto";
+    stage.style.transform = "rotate(90deg)";
+    stage.style.transformOrigin = "top left";
+  } else {
+    stage.style.left = "0";
+    stage.style.top = "0";
+    stage.style.transform = "none";
+  }
+
+  canvas.width = Math.round(W * D);
+  canvas.height = Math.round(H * D);
+  canvas.style.width = W + "px";
+  canvas.style.height = H + "px";
+
+  ctx.setTransform(D, 0, 0, D, 0, 0);
+
+  if (img.complete && img.naturalWidth) {
+    build();
+  }
 }
+
+window.addEventListener("resize", resize);
+window.addEventListener("orientationchange", resize);
 
 function build(){
   const off=document.createElement("canvas");
