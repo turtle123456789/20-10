@@ -6,67 +6,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>20/10 - Ngàn Chấm Đỏ Yêu Thương</title>
 <style>
-*{box-sizing:border-box}
-html,body{
-  margin:0;width:100%;height:100%;
-  overflow:hidden;background:#050107;
-}
-body{font-family:Arial,sans-serif}
-canvas{
-  display:block;width:100%;height:100%;
-}
-.message{
-  position:fixed;
-  z-index:2;
-  left:0;right:0;bottom:5%;
-  text-align:center;
-  pointer-events:none;
-  padding:15px;
-  animation:appear 2s ease 1s both;
-}
-.message h1{
-  font-size:clamp(25px,5vw,48px);
-  color:#ff526f;
-  letter-spacing:3px;
-  text-shadow:0 0 12px #ff1744,0 0 35px #ff1744;
-}
-.message p{
-  font-size:clamp(13px,2.5vw,19px);
-  color:#ffe0e7;
-  text-shadow:0 0 10px #ff1744;
-}
-@keyframes appear{
-  from{opacity:0;transform:translateY(15px)}
-  to{opacity:1;transform:translateY(0)}
-}
-
-/* Luôn hiển thị nội dung theo khung ngang trên điện thoại */
-
-* {
+  * {
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
   background: #050107;
-}
-
-body {
   font-family: Arial, sans-serif;
 }
 
 #stage {
   position: fixed;
-  width: 100vh;
-  height: 100vw;
-  top: 0;
-  left: 100vw;
-  transform: rotate(90deg);
-  transform-origin: top left;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
+  background: #050107;
 }
 
 #canvas {
@@ -77,42 +37,28 @@ body {
 
 .message {
   position: absolute;
-  bottom: 4%;
-  left: 0;
-  width: 100%;
-  text-align: center;
-  padding: 8px;
-  box-sizing: border-box;
-}
-
-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.message {
-  position: absolute;
   z-index: 2;
   left: 0;
   right: 0;
-  bottom: 5%;
+  bottom: 4%;
+  width: 100%;
+  padding: 8px;
   text-align: center;
   pointer-events: none;
-  padding: 15px;
   animation: appear 2s ease 1s both;
 }
 
 .message h1 {
-  font-size: clamp(25px, 5vw, 48px);
+  margin: 0 0 8px;
+  font-size: clamp(18px, 4vw, 48px);
   color: #ff526f;
   letter-spacing: 3px;
   text-shadow: 0 0 12px #ff1744, 0 0 35px #ff1744;
-  margin-bottom: 12px;
 }
 
 .message p {
-  font-size: clamp(13px, 2.5vw, 19px);
+  margin: 0;
+  font-size: clamp(12px, 2.5vw, 19px);
   color: #ffe0e7;
   text-shadow: 0 0 10px #ff1744;
 }
@@ -127,37 +73,7 @@ canvas {
     transform: translateY(0);
   }
 }
-
-/* Điện thoại cầm dọc: xoay cả khung thành ngang */
-@media screen and (max-width: 768px) and (orientation: portrait) {
-  #stage {
-    width: 100dvh;
-    height: 100vw;
-    inset: auto;
-    top: 0;
-    left: 100vw;
-    transform: rotate(90deg);
-    transform-origin: top left;
-  }
-
-  .message {
-    bottom: 3%;
-    padding: 5px;
-  }
-
-  .message h1 {
-    font-size: clamp(16px, 4vw, 28px);
-    letter-spacing: 2px;
-    margin-bottom: 6px;
-  }
-
-  .message p {
-    font-size: clamp(10px, 2.2vw, 14px);
-    margin: 0;
-  }
-}
-
-</style>
+</style>>
 </head>
 
 <body>
@@ -224,10 +140,12 @@ const glowWhite=createGlow("#fff0f4");
 function resize() {
   D = Math.min(window.devicePixelRatio || 1, 1.5);
 
-  const portrait = window.innerHeight > window.innerWidth;
+  const screenW = window.innerWidth;
+  const screenH = window.innerHeight;
+  const portrait = screenH > screenW;
 
-  W = portrait ? window.innerHeight : window.innerWidth;
-  H = portrait ? window.innerWidth : window.innerHeight;
+  W = portrait ? screenH : screenW;
+  H = portrait ? screenW : screenH;
 
   const stage = document.getElementById("stage");
 
@@ -235,12 +153,18 @@ function resize() {
   stage.style.height = H + "px";
 
   if (portrait) {
-    stage.style.left = "100vw";
+    // Xoay giao diện ngang khi điện thoại cầm dọc
+    stage.style.left = screenW + "px";
     stage.style.top = "0";
+    stage.style.right = "auto";
+    stage.style.bottom = "auto";
     stage.style.transform = "rotate(90deg)";
+    stage.style.transformOrigin = "top left";
   } else {
     stage.style.left = "0";
     stage.style.top = "0";
+    stage.style.right = "auto";
+    stage.style.bottom = "auto";
     stage.style.transform = "none";
   }
 
@@ -251,7 +175,7 @@ function resize() {
 
   ctx.setTransform(D, 0, 0, D, 0, 0);
 
-  if (img.complete && img.naturalWidth) {
+  if (img.complete && img.naturalWidth > 0) {
     build();
   }
 }
@@ -259,9 +183,6 @@ function resize() {
 window.addEventListener("resize", resize);
 window.addEventListener("orientationchange", resize);
 
-resize();
-window.addEventListener("resize", resize);
-window.addEventListener("orientationchange", resize);
 
 function build(){
   const off=document.createElement("canvas");
